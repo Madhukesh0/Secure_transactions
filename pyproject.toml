@@ -1,0 +1,14 @@
+[project]
+name = "securepay"
+version = "1.0.0"
+description = "SecurePay — secure e-commerce transaction mini project (BCS703 case study)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "streamlit>=1.36",
+    "pycryptodome>=3.20",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

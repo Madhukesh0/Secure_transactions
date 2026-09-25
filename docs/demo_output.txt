@@ -1,0 +1,111 @@
+<frozen runpy>:128: RuntimeWarning: 'securepay.crypto' found in sys.modules after import of package 'securepay', but prior to execution of 'securepay.crypto'; this may result in unpredictable behaviour
+
+========================================================================
+SECURE E-COMMERCE TRANSACTION - CRYPTOGRAPHIC DEMONSTRATION
+========================================================================
+[Setup] Generating RSA-2048 keypairs for Customer and Payment Gateway ...
+        OK - 2048-bit RSA keypairs generated for both parties.
+
+
+========================================================================
+1. PLAINTEXT TRANSACTION (what the customer wants to send)
+========================================================================
+{
+  "txn_id": "TXN-F78432846E1A",
+  "timestamp": "2026-09-25T07:47:56.244351Z",
+  "customer": {
+    "id": "CUST-7741",
+    "name": "Aditya Sharma",
+    "email": "aditya.sharma@example.com"
+  },
+  "merchant_id": "MERCH-AMAZON-001",
+  "items": [
+    {
+      "sku": "BO-MATHE-205",
+      "title": "Engineering Mathematics Textbook",
+      "qty": 1,
+      "price": 650.0
+    },
+    {
+      "sku": "BO-DS-301",
+      "title": "Data Structures in Python",
+      "qty": 2,
+      "price": 499.0
+    }
+  ],
+  "payment": {
+    "card_number": "************0366",
+    "card_holder": "ADITYA SHARMA",
+    "expiry": "12/27",
+    "cvv": "***"
+  },
+  "amount": {
+    "value": 1648.0,
+    "currency": "INR"
+  }
+}
+
+========================================================================
+2. CUSTOMER ENCRYPTS + SIGNS PAYLOAD FOR GATEWAY
+========================================================================
+{
+  "envelope_version": "1.0",
+  "txn_id": "TXN-F78432846E1A",
+  "encrypted_aes_key": "oEeBxoxVl1eQZiuVjsuzUscFfC3A2hj8bL1wDUgmSVcFAnNxV8AShoYGpmVcBiN1jxrHF9gyMPyOMXI9sJVdU026E/oqNRtdq0gOekGbXIaMGwzaD/fOvR45/IoV59dUDOL4GHk9Kf9cpEmqLa2RY6jyK9QuMcAf3AdcVck70WEa8JZaxOSt4AhgqKfTERnWtiTwY/AjfXujgKRo/LgD6I7G27eEZaavyxYyNbZJS1m4OmiWpEwtk46B/hx5Uz5QIn+vPxAoY9QNdA5oOhXicNUabRlIEIUJvQVHHdkRnmdWXdwqjBI40CL4vw1/q+9437Oi0ZtbwU+pPBm5UHQE2w==",
+  "iv": "ZzSlrQdD+BSl7/jCbJMnlg==",
+  "ciphertext": "jTdxsNzhtlvDpNMg/VRzVm4GcouWad5fn6uzf+nOjfIcddRTxCT33UsZn2A1ntiR0a4aVMp7MilfYl3F/pUI7fH58RYBxT6AFOPsDUQfi1lRu0OYsTGb2re1NYYE/uV4/hVqKix9eYCEetKzCIqVQB7BTS5grVU7Z8RdAf/72GiVX1AB7ce3t/O8ihjfAmmx5U2XiYmqO5czxdqx+1M+2CzRkrSqcxYITfieYyg2zUaLjv060bqceU3ZXtBZJMjoXZjI5J0Oe/YBx+Ns4eyGEKh0khc+ht5NpxvnATVR3Q6gbFLKEBSflAxH2IItMV8/v00gx8wmnPysl/CW9F0m4nYbyMNw7iBGHYBeLfA/HROIa1wwcvEne01s0f/Xcys9CQG2MF2U7ReBsb8jLLyJWLoAs1PvFUz/K/30BSVemjolcr+BdvX90gmwIHavv110ZJ8peQoW3ZYglkYPTmA0fW2fJJn1YhlAMy0ZlAB4veZyWwJr+nBBfWBrNWO6GYB/8HP1upwOm8BCQiOUa8BTq/pzthSRVNsZ+eYaOCh2FZmpjuszJHpSVjQKjFQ+ZPqGzx3NLnO9SDWfIPVWtOTmmUSfu2P6FgtNcOon+dAFcRE/LbQhe48pSLTmizM5S5joUlDyGfOPn5zj1m+9LivxlUSDnxCF/GOK4QFlM7b+VoeH2asn5gVRXzJFSI1Lv46EByMC8J6GAma80mOvhPzo0ZPkE5lj8qbEkVqlsCJL9WA=",
+  "signature": "LPIxw1SHMHyH4yuOAW6p+Mr9b6oNLCCIt3m3+IkZyfD0iG2BEdbVT2Yxp4YNr8BQnPVLzVnCVLLe0VocNdbuX+exJdqQTnNot2eF3Sb7LcMMJKHeTSZ0q6ui71hGBa0FuSkPguDz0VWWMZgaabZUUzCx8H86EXIdCpouqmVGLBChCGxNDO8pjwINo09+Et/6YNuFFIO70WK1pppEgQh8E/5iXxqQZOYXFrcjhVBD7mPBRP/7aCFGeg7IVaiz4qjnr5kxJKPx0pTOF0muXzMQxXbeluxiL3bEbtY7phtHO5kasYMOkRiNLXlYiL0pvImvvMUdXEdc56kcdlJjrq/WIw==",
+  "mac": "YihjGrij9btlYeAV/OkIj7NJSzNiHa0EKwlx1HnVhBw=",
+  "algorithm": {
+    "symmetric": "AES-256-CBC",
+    "asymmetric": "RSA-2048-OAEP-SHA256",
+    "signature": "RSA-PSS-SHA256",
+    "mac": "HMAC-SHA256"
+  }
+}
+
+========================================================================
+3. PAYMENT GATEWAY DECRYPTS + VERIFIES
+========================================================================
+  [Step 1] Decrypted AES-256 session key with gateway RSA-2048 private key
+  [Step 2] Decrypted transaction payload with AES-256-CBC
+  [Step 3] HMAC payment-token integrity check: PASS
+  [Step 4] Customer RSA-PSS signature verification: PASS
+  [Step 5] SHA-256 integrity hash: 98ac65939b58802d7bc8ec39c1fd9f4d...
+
+========================================================================
+4. GATEWAY AUTHORIZATION RESPONSE
+========================================================================
+{
+  "auth_code": "AUTH-18B96C4EED",
+  "status": "APPROVED",
+  "amount": {
+    "currency": "INR",
+    "value": 1648.0
+  },
+  "txn_id": "TXN-F78432846E1A"
+}
+
+========================================================================
+5. TAMPER TEST - attacker flips amount in ciphertext
+========================================================================
+  [Step 1] Decrypted AES-256 session key with gateway RSA-2048 private key
+  [Step 2] Decrypted transaction payload with AES-256-CBC
+  [Step 3] JSON decode FAILED - payload was tampered with
+
+  -> Gateway result: REJECTED (tampering detected)
+
+========================================================================
+6. KEY-EXCHANGE TEST - wrong RSA private key cannot decrypt
+========================================================================
+  Decryption with WRONG private key FAILED as expected: ValueError
+
+========================================================================
+DEMO COMPLETE
+========================================================================
+The full cryptographic round-trip succeeded. Payment data was protected by:
+  * AES-256-CBC  -> confidentiality of card number / CVV
+  * RSA-2048 OAEP -> confidentiality of the AES session key
+  * RSA-PSS / SHA-256 -> authenticity + integrity + non-repudiation
+  * HMAC-SHA256 -> fast payment-token integrity check
+  * random IV per transaction -> semantic security

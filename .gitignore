@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+.venv/
+
+# Runtime data (auto-created by the app)
+securepay.db
+securepay.db-wal
+securepay.db-shm
+
+# Streamlit secrets
+.streamlit/secrets.toml

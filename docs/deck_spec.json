@@ -1,0 +1,265 @@
+{
+  "title": "Secure E-Commerce Transactions",
+  "subtitle": "A Cryptographic Case Study (BCS703)",
+  "author": "Group Case Study - Cryptography & Network Security",
+  "slide_size": "16:9",
+  "slides": [
+    {
+      "layout": "title",
+      "title": "Secure E-Commerce Transactions",
+      "subtitle": "Cryptographic Case Study - BCS703"
+    },
+    {
+      "layout": "section",
+      "title": "1. Introduction"
+    },
+    {
+      "layout": "title_content",
+      "title": "The Online Shopping Threat Landscape",
+      "bullets": [
+        {"text": "Card-not-present fraud is the dominant attack on e-commerce.", "level": 0},
+        {"text": "Card numbers, CVVs, and customer PII travel over public networks every second.", "level": 0},
+        {"text": "Attackers exploit weak TLS, stored-card theft, man-in-the-middle, replay and tampering.", "level": 0},
+        {"text": "PCI-DSS mandates end-to-end encryption and integrity controls for cardholder data.", "level": 0},
+        {"text": "A single compromised record can mean regulatory fines, chargebacks and brand damage.", "level": 0}
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Why Cryptography Alone Is Not Enough",
+      "bullets": [
+        {"text": "Confidentiality without integrity = attacker can flip encrypted bytes blindly.", "level": 0},
+        {"text": "Integrity without authenticity = any sender can claim to be a legitimate customer.", "level": 0},
+        {"text": "Symmetric crypto is fast but cannot safely exchange keys across the Internet.", "level": 0},
+        {"text": "Asymmetric crypto solves key exchange but is too slow for full payloads.", "level": 0},
+        {"text": "Solution: HYBRID encryption + signatures + hashing, layered for defence-in-depth.", "level": 0}
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "2. Problem Statement"
+    },
+    {
+      "layout": "title_content",
+      "title": "Problem Statement",
+      "bullets": [
+        {"text": "Protect customer payment information and transaction details from cyberattacks during online shopping.", "level": 0, "italic": true},
+        {"text": "Specific sub-problems to solve:", "level": 0, "bold": true},
+        {"text": "P-1  Confidentiality of card number, CVV, and customer PII in transit.", "level": 1},
+        {"text": "P-2  Integrity - any byte flip in the transaction must be detected.", "level": 1},
+        {"text": "P-3  Authenticity - the receiver must know the message came from the claimed customer.", "level": 1},
+        {"text": "P-4  Non-repudiation - a customer cannot later deny having sent the transaction.", "level": 1},
+        {"text": "P-5  Replay protection via a unique transaction ID and timestamp per request.", "level": 1}
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "3. Objectives"
+    },
+    {
+      "layout": "title_content",
+      "title": "Objectives",
+      "bullets": [
+        {"text": "O-1  Build a working prototype that processes an end-to-end secure transaction.", "level": 0},
+        {"text": "O-2  Use industry-grade primitives: AES-256, RSA-2048, RSA-PSS, SHA-256, HMAC-SHA256.", "level": 0},
+        {"text": "O-3  Demonstrate confidentiality, integrity, authenticity and non-repudiation.", "level": 0},
+        {"text": "O-4  Show failure modes: a tampered envelope is rejected; a wrong key cannot decrypt.", "level": 0},
+        {"text": "O-5  Produce a reproducible Python implementation that can be demoed live.", "level": 0}
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "4. Cryptographic Techniques Used"
+    },
+    {
+      "layout": "title_content",
+      "title": "Algorithm Suite",
+      "bullets": [
+        {"text": "AES-256 in CBC mode with PKCS#7 padding - encrypts the full transaction payload.", "level": 0},
+        {"text": "Random 128-bit IV generated per transaction - semantic security.", "level": 0},
+        {"text": "RSA-2048 OAEP / SHA-256 - encrypts the AES session key for safe transport.", "level": 0},
+        {"text": "RSA-PSS / SHA-256 digital signature - customer signs the payload.", "level": 0},
+        {"text": "SHA-256 hash - tamper-evident record of the payload.", "level": 0},
+        {"text": "HMAC-SHA256 - fast payment-token integrity check at the gateway.", "level": 0},
+        {"text": "All primitives come from PyCryptodome (FIPS-aligned algorithms).", "level": 0}
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Mapping Cryptography to Threats",
+      "tables": [
+        {
+          "rows": [
+            ["Threat", "Cryptographic Control"],
+            ["Eavesdropping on card / CVV", "AES-256-CBC"],
+            ["Key interception", "RSA-2048 OAEP key wrapping"],
+            ["Tampering of amount / items", "HMAC-SHA256 + RSA-PSS signature"],
+            ["Impersonation of customer", "RSA-PSS verification with public key"],
+            ["Repudiation by customer", "RSA-PSS (non-repudiation)"],
+            ["Replay of old transactions", "TXN-ID + UTC timestamp"]
+          ]
+        }
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "5. Proposed Solution"
+    },
+    {
+      "layout": "title_content",
+      "title": "System Design",
+      "bullets": [
+        {"text": "Two parties: CUSTOMER (browser / app) and PAYMENT GATEWAY (server).", "level": 0},
+        {"text": "Each party holds an RSA-2048 keypair generated locally at session start.", "level": 0},
+        {"text": "Public keys are exchanged in advance (in production: signed X.509 certificates).", "level": 0},
+        {"text": "Customer builds a JSON payload: items, amount, card, customer, timestamp, txn_id.", "level": 0},
+        {"text": "Payload is signed -> encrypted with AES-256 -> AES key wrapped with RSA -> sent.", "level": 0},
+        {"text": "Gateway unwraps key -> decrypts -> verifies HMAC -> verifies signature -> approves.", "level": 0}
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Transaction Flow",
+      "tables": [
+        {
+          "rows": [
+            ["#", "Step", "Action"],
+            ["1", "Sign",     "Customer signs plaintext JSON with RSA-PSS"],
+            ["2", "Sym enc",  "Customer encrypts JSON with random AES-256 key + IV"],
+            ["3", "Wrap key", "AES key is encrypted with gateway RSA-2048 public key"],
+            ["4", "Envelop",  "Ciphertext + IV + wrapped key + signature + HMAC -> envelope"],
+            ["5", "Unwrap",   "Gateway unwraps AES key with its RSA-2048 private key"],
+            ["6", "Decrypt",  "AES-256-CBC decrypts the ciphertext"],
+            ["7", "Verify",   "HMAC + RSA-PSS verified, then APPROVE or REJECT"]
+          ]
+        }
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "6. Implementation Details"
+    },
+    {
+      "layout": "title_content",
+      "title": "Technology Stack",
+      "bullets": [
+        {"text": "Language: Python 3.11", "level": 0},
+        {"text": "Library: PyCryptodome (AES, RSA, PSS, SHA256, HMAC)", "level": 0},
+        {"text": "File: secure_ecommerce.py (single-file, runnable end-to-end demo)", "level": 0},
+        {"text": "Modules: build_transaction_payload, customer_sends_transaction, gateway_processes_envelope", "level": 0},
+        {"text": "Test scenarios: happy path, tampered ciphertext, wrong private key", "level": 0},
+        {"text": "Output: human-readable log + JSON envelope for inspection", "level": 0}
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Code Excerpt - Sign + Encrypt",
+      "bullets": [
+        {"text": "h = SHA256.new(raw)", "level": 0, "font": "Consolas"},
+        {"text": "signature = pss.new(customer_priv).sign(h)", "level": 0, "font": "Consolas"},
+        {"text": "aes_key = get_random_bytes(32)   # AES-256", "level": 0, "font": "Consolas"},
+        {"text": "iv, ct = aes_encrypt(aes_key, raw)", "level": 0, "font": "Consolas"},
+        {"text": "wrapped = PKCS1_OAEP.new(gw_pub, hashAlgo=SHA256).encrypt(aes_key)", "level": 0, "font": "Consolas"},
+        {"text": "mac = hmac.new(aes_key, token_input, hashlib.sha256).digest()", "level": 0, "font": "Consolas"}
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Code Excerpt - Verify + Approve",
+      "bullets": [
+        {"text": "aes_key = PKCS1_OAEP.new(gw_priv, hashAlgo=SHA256).decrypt(wrapped)", "level": 0, "font": "Consolas"},
+        {"text": "raw = aes_decrypt(aes_key, iv, ct)   # raises on bad padding", "level": 0, "font": "Consolas"},
+        {"text": "payload = json.loads(raw)", "level": 0, "font": "Consolas"},
+        {"text": "if not hmac.compare_digest(mac_recv, mac_calc): REJECT", "level": 0, "font": "Consolas"},
+        {"text": "pss.new(customer_pub).verify(SHA256.new(raw), signature)", "level": 0, "font": "Consolas"},
+        {"text": "return {auth_code, status: 'APPROVED', amount, txn_id}", "level": 0, "font": "Consolas"}
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "7. Results and Discussion"
+    },
+    {
+      "layout": "title_content",
+      "title": "Results - Happy Path",
+      "bullets": [
+        {"text": "TXN-2707D81D4453 generated for cart of 2 items, total INR 1,648.00.", "level": 0},
+        {"text": "Step 1: AES key unwrapped by gateway RSA-2048 private key  -> OK", "level": 0},
+        {"text": "Step 2: AES-256-CBC decryption of payload                  -> OK", "level": 0},
+        {"text": "Step 3: HMAC-SHA256 payment-token integrity check          -> PASS", "level": 0},
+        {"text": "Step 4: Customer RSA-PSS signature verification            -> PASS", "level": 0},
+        {"text": "Step 5: SHA-256 integrity hash recorded.", "level": 0},
+        {"text": "Gateway authorization: AUTH-2D09DEA534, status = APPROVED.", "level": 0, "bold": true}
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Results - Attack Scenarios",
+      "tables": [
+        {
+          "rows": [
+            ["Attack", "Detection mechanism", "Outcome"],
+            ["Bit-flip in ciphertext",   "AES-CBC padding / UTF-8 fails on decrypt", "REJECTED"],
+            ["Forged HMAC",              "HMAC compare_digest mismatch",            "REJECTED"],
+            ["Forged signature",         "RSA-PSS verify raises ValueError",        "REJECTED"],
+            ["Wrong RSA private key",    "OAEP decryption raises ValueError",       "REJECTED"],
+            ["Replay of old envelope",   "TXN-ID + timestamp check at gateway",      "REJECTED"]
+          ]
+        }
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Observations",
+      "bullets": [
+        {"text": "Hybrid encryption gives speed (AES) AND safe key exchange (RSA) in one design.", "level": 0},
+        {"text": "Digital signature adds authenticity and non-repudiation - a layer encryption alone cannot provide.", "level": 0},
+        {"text": "CBC's error-propagation is a useful side-effect for tamper detection in this design.", "level": 0},
+        {"text": "A unique IV per transaction is critical - never reuse an IV under the same key.", "level": 0},
+        {"text": "In production, AEAD (AES-GCM) would replace AES-CBC + HMAC for a single primitive.", "level": 0},
+        {"text": "Real systems add TLS for transport, X.509 certs for identity, and 3-D-Secure for cardholder auth.", "level": 0}
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "8. Conclusion"
+    },
+    {
+      "layout": "title_content",
+      "title": "Conclusion",
+      "bullets": [
+        {"text": "A complete secure e-commerce transaction prototype was implemented and verified.", "level": 0},
+        {"text": "All five security objectives (confidentiality, integrity, authenticity, non-repudiation, replay protection) were met.", "level": 0},
+        {"text": "The design correctly rejects tampered ciphertext, forged HMACs, forged signatures, and wrong keys.", "level": 0},
+        {"text": "Defence-in-depth (RSA + AES + HMAC + signature + hash) prevents single-point failures.", "level": 0},
+        {"text": "Future work: swap CBC for AES-GCM (AEAD), add TLS, integrate X.509 certificates and a real payment gateway API.", "level": 0}
+      ]
+    },
+    {
+      "layout": "section",
+      "title": "9. References"
+    },
+    {
+      "layout": "title_content",
+      "title": "References",
+      "bullets": [
+        {"text": "William Stallings, Cryptography and Network Security - Principles and Practice, 8th Edition, Pearson.", "level": 0},
+        {"text": "NIST FIPS 197 - Advanced Encryption Standard (AES).", "level": 0},
+        {"text": "NIST FIPS 180-4 - Secure Hash Standard (SHA-256).", "level": 0},
+        {"text": "NIST FIPS 186-4 - Digital Signature Standard (RSA-PSS).", "level": 0},
+        {"text": "RFC 8017 - PKCS #1: RSA Cryptography Specifications Version 2.2.", "level": 0},
+        {"text": "RFC 2104 - HMAC: Keyed-Hashing for Message Authentication.", "level": 0},
+        {"text": "PyCryptodome Documentation, https://pycryptodome.readthedocs.io.", "level": 0},
+        {"text": "PCI-DSS v4.0 - Payment Card Industry Data Security Standard.", "level": 0}
+      ]
+    },
+    {
+      "layout": "title_content",
+      "title": "Thank You",
+      "bullets": [
+        {"text": "Questions are welcome.", "level": 0, "bold": true},
+        {"text": "Live demo: python secure_ecommerce.py", "level": 0, "font": "Consolas"}
+      ]
+    }
+  ]
+}
