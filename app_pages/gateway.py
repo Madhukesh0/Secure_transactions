@@ -8,7 +8,7 @@ from securepay.flow import process_and_record
 env = st.session_state.get("envelope")
 if not env:
     ui.page_header(
-        "Step 02 · Gateway side",
+        "Step 04 · Verify & authorize",
         "Payment Gateway",
         "The gateway holds the only RSA private key that unwraps session keys.",
     )
@@ -18,7 +18,7 @@ if not env:
     ui.footer()
 else:
     ui.page_header(
-        "Step 02 · Gateway side",
+        "Step 04 · Verify & authorize",
         "Payment Gateway",
         "It decrypts the envelope, checks the HMAC payment-token, verifies "
         "the customer's signature and issues an authorization — or refuses.",

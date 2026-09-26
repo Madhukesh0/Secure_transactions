@@ -5,11 +5,22 @@ import streamlit as st
 from securepay import db, ui
 
 ui.page_header(
-    "Case study · BCS703 · Cryptography &amp; Network Security",
+    "",
     "SecurePay — a cryptographic checkout",
     "Protect customer payment information and transaction details from "
     "cyberattacks during online shopping. Every click in this app runs "
     "real cryptography (PyCryptodome) — nothing is mocked or simulated.",
+)
+st.markdown(
+    " ".join(
+        ui.pill(t, tone)
+        for t, tone in [
+            ("🔒 AES-256", "info"), ("🔑 RSA-2048", "info"),
+            ("✍️ RSA-PSS", "info"), ("🧾 HMAC-SHA256", "info"),
+            ("🔐 PBKDF2", "info"), ("✅ REAL CRYPTO — 0 MOCKS", "success"),
+        ]
+    ),
+    unsafe_allow_html=True,
 )
 
 # --- 01: protocol pipeline --------------------------------------------------
@@ -53,7 +64,7 @@ m3.metric("Attack attempts", s["attacks"])
 m4.metric("Attacks blocked", s["blocked"])
 
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("Start with Checkout →", type="primary", width="stretch"):
-    ui.goto("checkout")
+if st.button("🛍️ Start shopping →", type="primary", width="stretch"):
+    ui.goto("shop")
 
 ui.footer()

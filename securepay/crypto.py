@@ -27,6 +27,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pss
 from Crypto.Hash import SHA256
 from Crypto.Random import get_random_bytes
+from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util.Padding import pad, unpad
 
 
@@ -37,6 +38,36 @@ def b64e(b: bytes) -> str:
 
 def b64d(s: str) -> bytes:
     return base64.b64decode(s.encode())
+
+
+# ---------- password hashing (account sign-up / sign-in) ----------------------
+
+_PBKDF2_ITERATIONS = 200_000
+
+
+def hash_password(password: str) -> str:
+    """Salted password hash for account storage — the plaintext is never kept.
+
+    PBKDF2-HMAC-SHA256, random 16-byte salt per user, 200,000 iterations.
+    Format: pbkdf2_sha256$<iterations>$<salt b64>$<hash b64>
+    """
+    salt = get_random_bytes(16)
+    dk = PBKDF2(password, salt, dkLen=32, count=_PBKDF2_ITERATIONS,
+                hmac_hash_module=SHA256)
+    return "pbkdf2_sha256${}${}${}".format(_PBKDF2_ITERATIONS, b64e(salt), b64e(dk))
+
+
+def verify_password(password: str, stored: str) -> bool:
+    """Constant-time check of a password against a stored hash (False if malformed)."""
+    try:
+        algo, iters, salt_b64, hash_b64 = stored.split("$")
+        if algo != "pbkdf2_sha256":
+            return False
+        dk = PBKDF2(password, b64d(salt_b64), dkLen=32, count=int(iters),
+                    hmac_hash_module=SHA256)
+        return hmac.compare_digest(dk, b64d(hash_b64))
+    except (ValueError, TypeError):
+        return False
 
 
 # ---------- 1. Key generation (merchant + customer / payment gateway) ------
@@ -89,11 +120,33 @@ def verify(rsa_pub: RSA.RsaKey, data: bytes, signature: bytes) -> bool:
 
 # ---------- 5. The transaction protocol ------------------------------------
 
-def build_transaction_payload(customer, cart, card, amount):
+def new_txn_id(email: str) -> str:
+    """Fresh unique transaction id (used before the payload exists — UPI QR)."""
+    return "TXN-" + hashlib.sha1(
+        (email + datetime.utcnow().isoformat()).encode()
+    ).hexdigest()[:12].upper()
+
+
+def build_transaction_payload(customer, cart, card, amount, txn_id=None):
+    if txn_id is None:
+        txn_id = new_txn_id(customer["email"])
+    if card.get("method") == "UPI":
+        # card-free rail: the payment block carries the UPI reference instead
+        payment = {
+            "method": "UPI",
+            "upi_vpa": card["upi_vpa"],
+            "txn_ref": card["txn_ref"],
+            "status": card.get("status", "INITIATED"),
+        }
+    else:
+        payment = {
+            "card_number": card["number"],   # will be encrypted
+            "card_holder": card["holder"],
+            "expiry": card["expiry"],
+            "cvv": card["cvv"],              # will be encrypted
+        }
     return {
-        "txn_id": "TXN-" + hashlib.sha1(
-            (customer["email"] + datetime.utcnow().isoformat()).encode()
-        ).hexdigest()[:12].upper(),
+        "txn_id": txn_id,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "customer": {
             "id": customer["id"],
@@ -102,12 +155,7 @@ def build_transaction_payload(customer, cart, card, amount):
         },
         "merchant_id": "MERCH-AMAZON-001",
         "items": cart,
-        "payment": {
-            "card_number": card["number"],   # will be encrypted
-            "card_holder": card["holder"],
-            "expiry": card["expiry"],
-            "cvv": card["cvv"],              # will be encrypted
-        },
+        "payment": payment,
         "amount": {
             "value": amount,
             "currency": "INR",

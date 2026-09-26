@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 
 def test_record_and_list_transaction(tmp_db):
     row_id = tmp_db.record_transaction(
@@ -53,3 +55,39 @@ def test_stats_and_clear(tmp_db):
     tmp_db.clear_all()
     assert tmp_db.stats()["transactions"] == 0
     assert tmp_db.stats()["attacks"] == 0
+
+
+# --- customer accounts --------------------------------------------------------
+
+def test_register_and_login_roundtrip(tmp_db):
+    user = tmp_db.register_customer("Aditya Sharma", "aditya@example.com", "secret1")
+    assert user["id"].startswith("CUST-")
+    assert user["email"] == "aditya@example.com"
+    out = tmp_db.login_customer("aditya@example.com", "secret1")
+    assert out is not None and out["id"] == user["id"]
+    assert "password" not in out  # the hash never leaves the db layer
+
+
+def test_login_rejects_wrong_password_and_unknown_email(tmp_db):
+    tmp_db.register_customer("Aditya Sharma", "aditya@example.com", "secret1")
+    assert tmp_db.login_customer("aditya@example.com", "wrong-password") is None
+    assert tmp_db.login_customer("nobody@example.com", "secret1") is None
+
+
+def test_duplicate_email_and_validation(tmp_db):
+    tmp_db.register_customer("Aditya Sharma", "aditya@example.com", "secret1")
+    with pytest.raises(ValueError):
+        tmp_db.register_customer("Someone Else", "ADITYA@example.com", "secret2")
+    with pytest.raises(ValueError):
+        tmp_db.register_customer("Shorty", "shorty@example.com", "123")
+
+
+def test_password_stored_only_as_salted_hash(tmp_db):
+    tmp_db.register_customer("Aditya Sharma", "aditya@example.com", "secret1")
+    row = tmp_db.get_customer_by_email("aditya@example.com")
+    assert row["password_hash"].startswith("pbkdf2_sha256$200000$")
+    assert "secret1" not in row["password_hash"]
+    # same password, different user -> different salt -> different hash
+    tmp_db.register_customer("Other User", "other@example.com", "secret1")
+    row2 = tmp_db.get_customer_by_email("other@example.com")
+    assert row["password_hash"] != row2["password_hash"]

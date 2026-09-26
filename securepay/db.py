@@ -6,6 +6,8 @@ Stores an audit trail that survives browser refreshes and app restarts:
   transactions - one row per gateway decision (APPROVED / REJECTED)
                  includes the envelope itself (JSON), auth code, amount
   attacks      - one row per attack attempt, outcome, and detection reason
+  customers    - account sign-ups: CUST-XXXXXX id + salted PBKDF2
+                 password hash (the plaintext password is never stored)
   meta         - simple key/value (schema version, counters)
 
 Run standalone to inspect:  python -m securepay.db
@@ -13,9 +15,12 @@ Run standalone to inspect:  python -m securepay.db
 
 import json
 import os
+import secrets
 import sqlite3
 import threading
 from datetime import datetime, timezone
+
+from securepay.crypto import hash_password, verify_password
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(_PROJECT_ROOT, "securepay.db")
@@ -65,6 +70,15 @@ def init_db():
                 key   TEXT PRIMARY KEY,
                 value TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS customers (
+                id            TEXT PRIMARY KEY,
+                name          TEXT NOT NULL,
+                email         TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,   -- pbkdf2_sha256$iter$salt$hash
+                created_at    TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_customer_email ON customers(email);
             """
         )
         c.execute(
@@ -154,6 +168,75 @@ def clear_all():
     with _lock, _conn() as c:
         c.execute("DELETE FROM transactions")
         c.execute("DELETE FROM attacks")
+
+
+# --- customer accounts --------------------------------------------------------
+
+def _new_customer_id():
+    """Random unique CUST-XXXXXX id (look-alike letters/digits excluded)."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    with _lock, _conn() as c:
+        while True:
+            cid = "CUST-" + "".join(secrets.choice(alphabet) for _ in range(6))
+            if c.execute("SELECT 1 FROM customers WHERE id=?", (cid,)).fetchone() is None:
+                return cid
+
+
+def get_customer(customer_id):
+    with _lock, _conn() as c:
+        row = c.execute("SELECT * FROM customers WHERE id=?",
+                        (customer_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_customer_by_email(email):
+    with _lock, _conn() as c:
+        row = c.execute("SELECT * FROM customers WHERE email=?",
+                        (str(email or "").strip().lower(),)).fetchone()
+        return dict(row) if row else None
+
+
+def register_customer(name, email, password):
+    """Create an account, hash the password, return {'id','name','email'}."""
+    name = str(name or "").strip()
+    email = str(email or "").strip().lower()
+    if not name or not email or not password:
+        raise ValueError("Name, email and password are all required.")
+    if "@" not in email or "." not in email:
+        raise ValueError("That email address doesn't look valid.")
+    if len(str(password)) < 6:
+        raise ValueError("Password must be at least 6 characters.")
+    if get_customer_by_email(email):
+        raise ValueError(f"An account with {email} already exists — sign in instead.")
+    cid = _new_customer_id()
+    try:
+        with _lock, _conn() as c:
+            c.execute(
+                """INSERT INTO customers (id, name, email, password_hash, created_at)
+                   VALUES (?,?,?,?,?)""",
+                (cid, name, email, hash_password(str(password)), _now()),
+            )
+    except sqlite3.IntegrityError:
+        raise ValueError(f"An account with {email} already exists — sign in instead.")
+    return {"id": cid, "name": name, "email": email}
+
+
+def login_customer(email, password):
+    """Check credentials; returns {'id','name','email'} or None (same message
+    for unknown email and wrong password — never reveal which one failed)."""
+    row = get_customer_by_email(email)
+    if row and verify_password(str(password), row["password_hash"]):
+        return {"id": row["id"], "name": row["name"], "email": row["email"]}
+    return None
+
+
+def list_customers(limit=50):
+    with _lock, _conn() as c:
+        rows = c.execute(
+            "SELECT id, name, email, created_at, password_hash "
+            "FROM customers ORDER BY rowid DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 def _demo():

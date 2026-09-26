@@ -1,2 +1,12 @@
 [browser]
 gatherUsageStats = false
+
+# Explicit professional theme — guarantees the app looks identical on the
+# examiner's machine (light fintech palette, indigo accent).
+[theme]
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F6F7FB"
+textColor = "#0F172A"
+font = "sans serif"

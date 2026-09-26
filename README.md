@@ -7,7 +7,7 @@ realistic attacks being blocked by named controls. All cryptography is real
 (PyCryptodome) — nothing is mocked — and every gateway decision / attack
 attempt is persisted to a SQLite audit trail.
 
-Sidebar navigation with six pages, a small CSS design system, and
+Sidebar navigation with nine pages, a small CSS design system, and
 flow-forward buttons between steps.
 
 > Demo/test data only. The card number is a standard test PAN — never enter a real card.
@@ -29,26 +29,38 @@ python -m securepay.db              # seed + print the SQLite audit trail
 python -m pytest                    # run the test suite
 ```
 
-## The six pages
+## The nine pages
 
 1. **Overview** — problem statement, 6-step protocol pipeline, five security
    goals as cards, live audit-trail metrics, CTA into the flow
-2. **Checkout** — fill an order, watch it get signed (RSA-PSS) and
-   hybrid-encrypted (AES-256 + RSA-OAEP); masked plaintext vs. wire view
-3. **Gateway** — numbered protocol, unwrap → decrypt → HMAC → signature,
+2. **Account** — sign up (auto-generated CUST-XXXXXX id) / sign in / sign
+   out; passwords stored only as salted PBKDF2-HMAC-SHA256 hashes
+3. **Shop** — 5-product campus-bookstore shelf; add items to the cart
+4. **Cart** — adjust quantities (± / remove / clear) and see the exact total
+   the payload will carry
+5. **Checkout** — order summary + payment form (pre-filled when signed
+   in). **Card:** auto-validated live (Luhn + network), simulated issuing-
+   bank authorization, decline test cards. **UPI QR:** RSA-PSS-signed
+   `upi://pay` request rendered as a QR — tamper-evident (Attack Lab #6).
+   On approval the order is signed (RSA-PSS) and hybrid-encrypted
+   (AES-256 + RSA-OAEP); masked plaintext vs. wire view
+6. **Gateway** — numbered protocol, unwrap → decrypt → HMAC → signature,
    APPROVED/REJECTED with a verification log
-4. **Attack Lab** — bit-flip, forged HMAC, forged signature, wrong key,
-   replay — each blocked by a specific, named control
-5. **Database** — SQLite audit trail (`securepay.db`): every gateway decision
-   and attack persisted, survives refresh/restart, JSON export, clear button
-6. **Report** — threat→control mapping, primitives, deliverables, references
+7. **Attack Lab** — six attacks: bit-flip, forged HMAC, forged signature,
+   wrong key, replay, UPI QR-swap — each blocked by a specific, named control
+8. **Database** — SQLite audit trail (`securepay.db`): every gateway decision
+   and attack persisted, accounts with hash-only passwords, JSON export,
+   clear button
+9. **Docs** 📖 — full documentation: how it works, how to use it, sample
+   workflow, threat→control mapping, primitives, project structure,
+   references
 
 ## Project layout
 
 ```text
 app.py                  Streamlit entry point / router (st.navigation)
-app_pages/              one script per page (overview, checkout, gateway,
-                        attack_lab, database, report)
+app_pages/              one script per page (overview, account, shop, cart,
+                        checkout, gateway, attack_lab, database, report)
 securepay/              the Python package
 ├── crypto.py           primitives + transaction protocol (+ CLI demo)
 ├── flow.py             transaction orchestration + attack simulations

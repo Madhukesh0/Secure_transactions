@@ -7,7 +7,7 @@ import streamlit as st
 from securepay import db, ui
 
 ui.page_header(
-    "Step 04 · Persistence",
+    "Step 06 · Evidence",
     "SQLite Audit Trail",
     "Every gateway decision and every attack attempt is written to "
     "securepay.db (stdlib sqlite3, WAL mode). The log survives refreshes "
@@ -60,8 +60,25 @@ else:
     if st.button("Go to Attack Lab →", type="primary"):
         ui.goto("attack_lab")
 
-# --- 04: export & maintenance ----------------------------------------------
-ui.section("04", "Export & maintenance")
+# --- 04: accounts ------------------------------------------------------------
+custs = db.list_customers()
+ui.section("04", "customers — accounts (passwords stored as hashes only)")
+if custs:
+    with st.container(border=True):
+        st.dataframe(custs, width="stretch", height=200)
+    ui.note(
+        "The <code>password_hash</code> column holds salted PBKDF2-HMAC-SHA256 "
+        "output (200,000 iterations, random 16-byte salt per user) — the "
+        "plaintext password is nowhere in this database, and two users with "
+        "the same password still get different hashes."
+    )
+else:
+    st.info("No accounts yet — create one on the Account page.")
+    if st.button("Go to Account →", type="primary"):
+        ui.goto("account")
+
+# --- 05: export & maintenance ------------------------------------------------
+ui.section("05", "Export & maintenance")
 e1, e2, e3 = st.columns(3)
 e1.download_button("⬇️ Export transactions (JSON)", json.dumps(txs, indent=2),
                    file_name="transactions.json", mime="application/json",

@@ -1,4 +1,4 @@
-"""Attack Lab: five attacks against a live envelope, each blocked by a control."""
+"""Attack Lab: six attacks against a live transaction, each blocked by a control."""
 
 import streamlit as st
 
@@ -9,6 +9,7 @@ from securepay.flow import (
     attack_bitflip,
     attack_forge_hmac,
     attack_forge_signature,
+    attack_qr_swap,
     attack_wrong_key,
     process_and_record,
 )
@@ -16,7 +17,7 @@ from securepay.flow import (
 env = st.session_state.get("envelope")
 if not env:
     ui.page_header(
-        "Step 03 · Adversary",
+        "Step 05 · Adversary",
         "Attack Lab",
         "Five realistic attacks against a live envelope.",
     )
@@ -26,7 +27,7 @@ if not env:
     ui.footer()
 else:
     ui.page_header(
-        "Step 03 · Adversary",
+        "Step 05 · Adversary",
         "Attack Lab",
         "Five realistic attacks against a live envelope. Each one should be "
         "blocked — watch which specific control catches it, then check the "
@@ -68,6 +69,29 @@ else:
             out_log = [("Key exchange", msg)]
             blocked = not recovered
             fail = None if recovered else msg
+        elif choice.startswith("Swap the UPI QR"):
+            req = st.session_state.get("upi_request")
+            if not req:
+                out_log = [(
+                    "Setup",
+                    "No UPI payment request in this session — pay with "
+                    "📱 UPI QR on the Checkout page first, then attack it here.",
+                )]
+                blocked = True
+                fail = None
+            else:
+                with st.spinner("Attacker re-prints the QR: amount ×10, own VPA..."):
+                    ok, tampered, msg = attack_qr_swap(
+                        req["string"], req["signature"],
+                        st.session_state.gateway_priv.publickey(),
+                    )
+                out_log = [
+                    ("Genuine request", req["string"]),
+                    ("Tampered request", tampered),
+                    ("Verification", msg),
+                ]
+                blocked = not ok
+                fail = None if ok else msg
         else:  # replay
             txn = env["txn_id"]
             out_log = []
