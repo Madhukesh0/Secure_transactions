@@ -203,6 +203,12 @@ else:
             st.json(view)
             with st.expander("Show complete envelope JSON"):
                 st.code(json.dumps(env, indent=2), language="json")
+            st.download_button(
+                "⬇️ Download envelope JSON",
+                json.dumps(env, indent=2),
+                file_name=f"{env['txn_id']}.json",
+                mime="application/json",
+            )
         pt_bytes = len(json.dumps(st.session_state.payload))
         ct_bytes = len(b64d(env["ciphertext"]))
         ui.note(
